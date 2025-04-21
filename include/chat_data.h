@@ -70,6 +70,28 @@ struct Conversation {
     std::string greeter;
 };
 
+struct SimpleMessage {
+    std::string role;  // "user" or "assistant"
+    std::string content;
+    std::string timestamp;
+};
+
+struct ChatData {
+    bool is_group_chat;
+    Conversation group_chat;
+    std::vector<SimpleMessage> simple_messages;
+    std::vector<Xoul> xouls;
+    std::vector<Persona> personas;
+    Scenario scenario;
+
+    // Common fields
+    std::string conversation_id;
+    std::string name;
+    std::string icon_url;
+};
+
+ChatData load_chat_data(const std::string& filename);
+
 Conversation load_conversation(const std::string& filename);
 std::string format_timestamp(const std::string& iso_timestamp);
 

@@ -16,6 +16,7 @@ class MessageWidget : public QWidget {
     Q_OBJECT
 public:
     explicit MessageWidget(const Message& message, const Conversation& conv, QWidget* parent = nullptr);
+    QSize sizeHint() const override;
 
 private:
     void setupUi();

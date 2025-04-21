@@ -4,25 +4,48 @@
 #include <QBuffer>
 #include <QPixmap>
 
+
 MessageWidget::MessageWidget(const Message& message, const Conversation& conv, QWidget* parent)
-        : QWidget(parent), message_(message), conv_(conv) {
+        : QWidget(parent), message_(message), conv_(conv)
+{
     setupUi();
     loadAuthorInfo();
+
+    // Set size policy to expanding
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+}
+
+QSize MessageWidget::sizeHint() const {
+    // Calculate minimum width needed
+    int width = parentWidget() ? parentWidget()->width() - 40 : 500;  // Account for margins
+
+    // Calculate height needed for content
+    contentLabel_->setFixedWidth(width - 60);  // Account for avatar and margins
+    int height = contentLabel_->heightForWidth(contentLabel_->width()) +
+                 authorLabel_->height() +
+                 20;  // Add padding
+
+    return QSize(width, qMax(height, 60));  // Ensure minimum height of avatar
 }
 
 void MessageWidget::setupUi() {
     QHBoxLayout* mainLayout = new QHBoxLayout(this);
+    mainLayout->setContentsMargins(10, 10, 10, 10);  // Add padding
 
-    // Avatar placeholder
+    // Avatar
     avatarLabel_ = new QLabel(this);
     avatarLabel_->setFixedSize(40, 40);
     avatarLabel_->setStyleSheet("border-radius: 20px; background-color: #ddd;");
     mainLayout->addWidget(avatarLabel_);
 
-    // Message content
+    // Content area
     QVBoxLayout* contentLayout = new QVBoxLayout();
+    contentLayout->setSpacing(5);
 
+    // Header (author + time)
     QHBoxLayout* headerLayout = new QHBoxLayout();
+    headerLayout->setSpacing(10);
+
     authorLabel_ = new QLabel(this);
     authorLabel_->setStyleSheet("font-weight: bold;");
     headerLayout->addWidget(authorLabel_);
@@ -34,12 +57,18 @@ void MessageWidget::setupUi() {
 
     contentLayout->addLayout(headerLayout);
 
+    // Message content
     contentLabel_ = new QLabel(this);
     contentLabel_->setWordWrap(true);
     contentLabel_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    contentLabel_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    contentLabel_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     contentLayout->addWidget(contentLabel_);
 
     mainLayout->addLayout(contentLayout, 1);
+
+    // Set minimum width to prevent too narrow messages
+    setMinimumWidth(200);
 
     // Style based on author type
     if (message_.author_type == "user") {
@@ -49,28 +78,34 @@ void MessageWidget::setupUi() {
     }
 }
 
+
 void MessageWidget::loadAuthorInfo() {
-    // Convert std::string to QString
-    authorLabel_->setText(QString::fromStdString(message_.author_name));
-    timeLabel_->setText(QString::fromStdString(format_timestamp(message_.timestamp)));
+    // Set author name
+    QString authorName = QString::fromStdString(message_.author_name);
+    if (authorName.isEmpty()) {
+        authorName = message_.author_type == "user" ? "You" : "Xoul";
+    }
+    authorLabel_->setText(authorName);
+
+    // Set timestamp if available
+    if (!message_.timestamp.empty()) {
+        timeLabel_->setText(QString::fromStdString(format_timestamp(message_.timestamp)));
+    } else {
+        timeLabel_->setText("");
+    }
+
+    // Set message content
     contentLabel_->setText(QString::fromStdString(message_.content));
 
-    // Try to find avatar URL
+    // Find avatar
     std::string avatar_url;
-
     if (message_.author_type == "user") {
-        for (const auto& persona : conv_.personas) {
-            if (persona.slug == message_.author_slug) {
-                avatar_url = persona.icon_url;
-                break;
-            }
+        if (!conv_.personas.empty()) {
+            avatar_url = conv_.personas[0].icon_url;
         }
     } else {
-        for (const auto& xoul : conv_.xouls) {
-            if (xoul.slug == message_.author_slug) {
-                avatar_url = xoul.icon_url;
-                break;
-            }
+        if (!conv_.xouls.empty()) {
+            avatar_url = conv_.xouls[0].icon_url;
         }
     }
 
